@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoggleSGuard · AI For Makers 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark">GG</span>
+        <div>
+          <strong>GogglesGuard</strong>
+          <small>Safety goggles booth</small>
+        </div>
+      </div>
+      <p class="event">AI For Makers 2026 · TEGAS Digital Village</p>
+    </header>
+
+    <section id="view-attract" class="view attract">
+      <div class="attract-card">
+        <p class="kicker">Factory safety · Fun snap</p>
+        <h1>Are you wearing your safety goggles?</h1>
+        <p class="lead">
+          Step in front of the camera. The AI checks your eyes, locks onto your face,
+          counts you down, then you decorate the photo and we email it to you.
+        </p>
+        <ul class="steps">
+          <li>1. Face lock</li>
+          <li>2. Smile &amp; snap</li>
+          <li>3. Pick a border</li>
+          <li>4. Get it by email</li>
+        </ul>
+        <button id="btn-start" class="btn primary xl">Start camera</button>
+        <p id="boot-note" class="note">Warming up the safety AI…</p>
+      </div>
+    </section>
+
+    <section id="view-live" class="view live hidden">
+      <div class="stage" id="stage">
+        <video id="cam" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="countdown" class="countdown hidden"></div>
+        <div id="flash"></div>
+        <div id="goggle-badge" class="goggle-badge hidden">You are not wearing safety goggles</div>
+        <div id="lock-tag" class="lock-tag hidden">LOCKED</div>
+      </div>
+      <div class="hud">
+        <div id="status-chip" class="chip">Looking for a face…</div>
+        <p id="hint">Stand in the frame with safety goggles on. Hold still so we can lock onto you.</p>
+        <button id="btn-ready" class="btn primary hidden">I’m ready — start countdown</button>
+      </div>
+    </section>
+
+    <section id="view-edit" class="view edit hidden">
+      <div class="edit-grid">
+        <div class="photo-wrap">
+          <canvas id="photo"></canvas>
+        </div>
+        <aside class="panel">
+          <h2>Decorate, then send</h2>
+          <p class="panel-lead">Pick an industry border. Enter the email that should receive this photo.</p>
+          <div id="filters" class="filters"></div>
+          <form id="email-form">
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" autocomplete="email" required placeholder="name@email.com">
+            <button id="btn-send" type="submit" class="btn primary">Send my photo</button>
+          </form>
+          <p id="send-error" class="error hidden"></p>
+          <button id="btn-retake" type="button" class="btn ghost">Retake photo</button>
+        </aside>
+      </div>
+    </section>
+
+    <section id="view-sent" class="view sent hidden">
+      <div class="sent-card">
+        <p class="kicker" id="sent-kicker">Inbox confirmed</p>
+        <h1 id="sent-title">Photo sent</h1>
+        <p id="sent-copy" class="lead"></p>
+        <img id="sent-preview" alt="Your decorated snap">
+        <button id="btn-next" class="btn primary xl">Next visitor</button>
+        <p id="sent-timer" class="note"></p>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="/static/booth.js"></script>
+</body>
+</html>

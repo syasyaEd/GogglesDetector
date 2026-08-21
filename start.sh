@@ -1,0 +1,9 @@
+#!/bin/zsh
+set -e
+cd "$(dirname "$0")"
+export PYTHONUNBUFFERED=1
+if [ ! -d .venv ]; then
+  python3 -m venv .venv
+  .venv/bin/pip install -r requirements.txt
+fi
+.venv/bin/python app.py
