@@ -13,42 +13,48 @@ SAFETY_LABELS = {
     "lab goggles",
     "industrial safety goggles",
     "wraparound safety glasses",
-    "goggles",
     "safety glasses",
     "protective eyewear",
 }
-GLASSES_LABELS = {"eyeglasses", "sunglasses", "reading glasses", "glasses"}
+GLASSES_LABELS = {"eyeglasses", "sunglasses", "reading glasses", "glasses", "spectacles"}
 PROMPTS = [
     "safety goggles",
     "protective goggles",
     "lab goggles",
     "industrial safety goggles",
     "wraparound safety glasses",
-    "goggles",
     "eyeglasses",
     "sunglasses",
     "reading glasses",
+    "spectacles",
 ]
 
 
-def _kind(label: str, conf: float) -> str | None:
-    if any(key in label for key in ("eyeglasses", "sunglass", "reading glasses")) or label == "glasses":
-        return "glasses" if conf >= 0.22 else None
-    if any(
+def _is_fashion(label: str) -> bool:
+    return any(key in label for key in ("eyeglass", "sunglass", "reading glasses", "spectacle")) or label == "glasses"
+
+
+def _is_explicit_safety(label: str) -> bool:
+    # Do not treat the generic word "goggles" as PPE. Fashion goggles match that too.
+    return any(
         key in label
         for key in (
             "wraparound",
-            "goggle",
             "safety goggle",
             "protective",
             "lab goggle",
             "industrial",
             "safety glasses",
+            "protective eyewear",
         )
-    ):
-        return "safety" if conf >= 0.18 else None
-    if label in SAFETY_LABELS:
-        return "safety" if conf >= 0.18 else None
+    ) or label in SAFETY_LABELS
+
+
+def _kind(label: str, conf: float) -> str | None:
+    if _is_fashion(label):
+        return "glasses" if conf >= 0.20 else None
+    if _is_explicit_safety(label):
+        return "safety" if conf >= 0.28 else None
     return None
 
 
@@ -154,8 +160,8 @@ class GogglesDetector:
             rivals = [g for g in glasses if _iou(item["bbox"], g["bbox"]) > 0.25]
             if rivals:
                 rival = max(rivals, key=lambda g: g["conf"])
-                explicit = any(key in rival["label"] for key in ("eyeglass", "sunglass", "reading"))
-                if explicit and rival["conf"] > item["conf"] + 0.12:
+                # Close call → fashion glasses. A safety booth should not lock on ordinary glasses.
+                if rival["conf"] >= item["conf"] - 0.08:
                     continue
             kept_safety.append(item)
         kept_glasses = []

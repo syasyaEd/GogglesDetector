@@ -28,6 +28,23 @@ def mail_app_available() -> bool:
     return platform.system() == "Darwin"
 
 
+SAFETY_LINES = {
+    "Sarawak": "Always wear safety goggles to protect your eyes.",
+    "Lab": "In labs, always wear safety goggles to protect your eyes.",
+    "Factory": "In factories, always wear safety goggles to protect your eyes.",
+    "Site": "On construction sites, always wear safety goggles to protect your eyes.",
+    "Timber": "In timber workshops, always wear safety goggles to protect your eyes.",
+    "Clinic": "In clinics and healthcare, always wear safety goggles to protect your eyes.",
+}
+
+
+def safety_line(filter_name: str) -> str:
+    return SAFETY_LINES.get(
+        filter_name,
+        "Always wear safety goggles to protect your eyes.",
+    )
+
+
 def send_photo(
     to_email: str,
     image_bytes: bytes,
@@ -38,22 +55,22 @@ def send_photo(
     if not is_valid_email(to_email):
         return {"ok": False, "error": "Please enter a valid email address."}
 
-    subject = "Your GoggleGuard snap from AI For Makers 2026"
+    line = safety_line(filter_name)
+    subject = "Your GogglesGuard snap from AI For Makers 2026"
     text_body = (
         "Hi!\n\n"
-        "Thanks for visiting the GogglesGuard booth at AI For Makers 2026 "
+        "Thanks for visiting the GogglesGuard (UiTM) booth at AI For Makers 2026 "
         "(Borneo Makers Festival) at TEGAS Digital Village, Kuching.\n\n"
         f"Safety check: {status_label}\n"
         f"Filter: {filter_name}\n\n"
-        "Your photo is attached. In factories and labs, always wear safety goggles "
-        "to protect your eyes.\n\n"
+        f"Your photo is attached. {line}\n\n"
         "— GogglesGuard × AI For Makers 2026\n"
     )
     html_body = f"""
     <div style="font-family:Arial,sans-serif;background:#0b0c0e;color:#f4f1ea;padding:24px;">
       <div style="max-width:560px;margin:auto;background:#15171c;border-radius:18px;overflow:hidden;border:1px solid #2a2e38;">
         <div style="background:#ffd100;color:#111;padding:16px 20px;font-weight:800;letter-spacing:.04em;">
-          GOGGLESGUARD · AI FOR MAKERS 2026
+          GogglesGuard · AI FOR MAKERS 2026
         </div>
         <div style="padding:20px;">
           <p style="margin:0 0 12px;">Thanks for trying the safety goggles booth.</p>
@@ -61,7 +78,7 @@ def send_photo(
           <b>Filter:</b> {filter_name}</p>
           <img src="cid:snap" alt="Your snap" style="width:100%;border-radius:12px;display:block;">
           <p style="margin:16px 0 0;color:#c6c1b4;font-size:14px;">
-            In factories, labs and workshops, always wear safety goggles.
+            {line}
           </p>
         </div>
       </div>
@@ -103,7 +120,7 @@ def _send_smtp(
     username = os.getenv("MAIL_USERNAME", "")
     password = os.getenv("MAIL_PASSWORD", "")
     from_addr = os.getenv("MAIL_FROM", username)
-    from_name = os.getenv("MAIL_FROM_NAME", "GoggleGuard Booth")
+    from_name = os.getenv("MAIL_FROM_NAME", "GogglesGuard Booth")
 
     msg = MIMEMultipart("related")
     msg["Subject"] = subject
@@ -117,7 +134,7 @@ def _send_smtp(
 
     image = MIMEImage(image_bytes, _subtype="jpeg")
     image.add_header("Content-ID", "<snap>")
-    image.add_header("Content-Disposition", "attachment", filename="goggleguard-snap.jpg")
+    image.add_header("Content-Disposition", "attachment", filename="gogglesguard-snap.jpg")
     msg.attach(image)
 
     with smtplib.SMTP(host, port, timeout=30) as smtp:

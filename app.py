@@ -101,14 +101,15 @@ def send():
     if not log_path.exists():
         log_path.write_text("time,email,status,filter,result\n", encoding="utf-8")
 
-    result = send_photo(email, image_bytes, status_label, filter_name)
-    with log_path.open("a", encoding="utf-8") as handle:
-        handle.write(
-            f"{stamp},{email},{status_label},{filter_name},{result.get('via') or result.get('error')}\n"
-        )
+    def _deliver() -> None:
+        result = send_photo(email, image_bytes, status_label, filter_name)
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(
+                f"{stamp},{email},{status_label},{filter_name},{result.get('via') or result.get('error')}\n"
+            )
 
-    status = 200 if result.get("ok") else 500
-    return jsonify(result), status
+    threading.Thread(target=_deliver, daemon=True).start()
+    return jsonify({"ok": True, "via": "queued"}), 200
 
 
 if __name__ == "__main__":

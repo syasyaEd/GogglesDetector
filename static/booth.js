@@ -154,14 +154,14 @@ function overlap(face, box) {
 }
 
 function isFashionGlasses(box) {
-  return /eyeglass|sunglass|reading/.test(box.label || "") || box.kind === "glasses";
+  return /eyeglass|sunglass|reading|spectacle/.test(box.label || "") || box.kind === "glasses";
 }
 
 function isSafetyGoggles(box) {
-  if (/eyeglass|sunglass|reading/.test(box.label || "")) return false;
+  if (/eyeglass|sunglass|reading|spectacle/.test(box.label || "")) return false;
   return (
     box.kind === "safety" ||
-    /goggle|wraparound|protective|lab goggle|industrial|safety glasses/.test(box.label || "")
+    /wraparound|safety goggle|protective|lab goggle|industrial|safety glasses/.test(box.label || "")
   );
 }
 
@@ -172,13 +172,14 @@ function classify(faces, boxes) {
     const face = faceBox(landmarks);
     const hits = boxes.filter((box) => overlap(face, box) > 0.1);
     const safetyHits = hits.filter(isSafetyGoggles);
-    const glassesHits = hits.filter((box) => /eyeglass|sunglass|reading/.test(box.label || ""));
+    const glassesHits = hits.filter(isFashionGlasses);
     if (safetyHits.length && glassesHits.length) {
       const s = Math.max(...safetyHits.map((box) => box.conf || 0));
       const g = Math.max(...glassesHits.map((box) => box.conf || 0));
-      best = g > s + 0.12 ? "glasses" : "safety";
+      best = s > g + 0.08 ? "safety" : "glasses";
     } else if (safetyHits.length) {
-      best = "safety";
+      const s = Math.max(...safetyHits.map((box) => box.conf || 0));
+      best = s >= 0.28 ? "safety" : "glasses";
     } else if (glassesHits.length || hits.length) {
       best = "glasses";
     }
@@ -208,7 +209,7 @@ function setGoggleBadge(status, hasFace) {
   const on = status === STATUS.safety || status.chip === "ok";
   els.goggleBadge.classList.remove("hidden", "on", "off");
   els.goggleBadge.classList.add(on ? "on" : "off");
-  els.goggleBadge.textContent = on ? "Goggle On" : "You are not wearing safety goggles";
+  els.goggleBadge.textContent = on ? "Goggles On" : "You are not wearing safety goggles";
 }
 
 function drawLive(faces, boxes, status) {
@@ -303,7 +304,7 @@ async function loop() {
         state.frozenBoxes,
         state.frozenStatus || STATUS.safety
       );
-      if (!state.counting) els.ready.classList.remove("hidden");
+      if (!state.counting) els.ready.classList.add("hidden");
 
       if (faces.length && wearing) {
         state.goneMs = 0;
@@ -318,7 +319,7 @@ async function loop() {
       if (faces.length) {
         if (wearing) {
           state.wearMs += dt;
-          if (state.wearMs > 350) lockFace();
+          if (state.wearMs > 550) lockFace();
         } else {
           state.wearMs = 0;
           els.hint.textContent = "Face found. Put on safety goggles to lock and snap.";
@@ -344,14 +345,19 @@ function cloneBoxes(boxes) {
 }
 
 function lockFace() {
+  if (state.locked) {
+    if (!state.counting) startCountdown();
+    return;
+  }
   state.locked = true;
   state.frozenFaces = cloneFaces(state.lastFaces);
   state.frozenBoxes = cloneBoxes(state.lastBoxes);
   state.frozenStatus = STATUS.safety;
   els.lockTag.classList.remove("hidden");
-  els.ready.classList.remove("hidden");
-  els.hint.textContent = "Safety goggles locked. Tap I’m ready, then pick a border.";
+  els.ready.classList.add("hidden");
+  els.hint.textContent = "Safety goggles locked. Smile! Counting down.";
   beep(520, 90);
+  startCountdown();
 }
 
 function unlockFace(reason) {
@@ -375,7 +381,10 @@ function unlockFace(reason) {
 
 function startCountdown() {
   if (state.counting) return;
-  if (!state.locked) lockFace();
+  if (!state.locked) {
+    lockFace();
+    return;
+  }
   state.counting = true;
   els.ready.classList.add("hidden");
   els.countdown.classList.remove("hidden");
@@ -548,50 +557,61 @@ function retake() {
   requestAnimationFrame(loop);
 }
 
+function startSentReset() {
+  let left = 15;
+  els.sentTimer.textContent = `Resetting for the next visitor in ${left}s`;
+  clearInterval(state.resetTimer);
+  state.resetTimer = setInterval(() => {
+    left -= 1;
+    els.sentTimer.textContent = `Resetting for the next visitor in ${left}s`;
+    if (left <= 0) resetBooth();
+  }, 1000);
+}
+
+function bindDownloadLink() {
+  document.getElementById("dl-photo")?.addEventListener("click", (clickEvent) => {
+    clickEvent.preventDefault();
+    const link = document.createElement("a");
+    link.href = els.photo.toDataURL("image/jpeg", 1.0);
+    link.download = "gogglesguard-snap.jpg";
+    link.click();
+  });
+}
+
 async function sendEmail(event) {
   event.preventDefault();
   els.sendError.classList.add("hidden");
   els.send.disabled = true;
   els.send.textContent = "Sending photo…";
+  const email = els.email.value.trim();
   const blob = await new Promise((resolve) => els.photo.toBlob(resolve, "image/jpeg", 0.92));
   const filter = FILTERS.find((item) => item.id === state.filterId);
+
+  if (state.snapUrl) URL.revokeObjectURL(state.snapUrl);
+  state.snapUrl = URL.createObjectURL(blob);
+  els.sentPreview.src = state.snapUrl;
+  els.sentKicker.textContent = "On its way";
+  els.sentTitle.textContent = "Photo sent";
+  els.sentCopy.textContent = `We are emailing your GogglesGuard snap to ${email}. Check inbox and spam.`;
+  show("sent");
+  startSentReset();
+  els.send.disabled = false;
+  els.send.textContent = "Send my photo";
+
   const body = new FormData();
-  body.append("email", els.email.value.trim());
+  body.append("email", email);
   body.append("status", state.snapStatus.label);
   body.append("filter", filter ? filter.name : "Sarawak");
-  body.append("image", blob, "goggleguard.jpg");
+  body.append("image", blob, "gogglesguard.jpg");
   try {
     const res = await fetch("/api/send", { method: "POST", body });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || "Could not send email");
-    if (state.snapUrl) URL.revokeObjectURL(state.snapUrl);
-    state.snapUrl = URL.createObjectURL(blob);
-    els.sentPreview.src = state.snapUrl;
-    els.sentKicker.textContent = data.via === "mail.app" ? "Sent with Mac Mail" : "Inbox confirmed";
-    els.sentTitle.textContent = "Photo sent";
-    els.sentCopy.textContent = `We emailed your GoggleGuard snap to ${els.email.value.trim()}. Check inbox and spam.`;
-    show("sent");
-    let left = 15;
-    els.sentTimer.textContent = `Resetting for the next visitor in ${left}s`;
-    clearInterval(state.resetTimer);
-    state.resetTimer = setInterval(() => {
-      left -= 1;
-      els.sentTimer.textContent = `Resetting for the next visitor in ${left}s`;
-      if (left <= 0) resetBooth();
-    }, 1000);
   } catch (err) {
-    els.sendError.innerHTML = `${err.message} You can retry, or <a id="dl-photo" href="#">download the photo</a>.`;
-    els.sendError.classList.remove("hidden");
-    document.getElementById("dl-photo")?.addEventListener("click", (clickEvent) => {
-      clickEvent.preventDefault();
-      const link = document.createElement("a");
-      link.href = els.photo.toDataURL("image/jpeg", 1.0);
-      link.download = "goggleguard-snap.jpg";
-      link.click();
-    });
-  } finally {
-    els.send.disabled = false;
-    els.send.textContent = "Send my photo";
+    els.sentKicker.textContent = "Saved on this laptop";
+    els.sentTitle.textContent = "Email delayed";
+    els.sentCopy.innerHTML = `${err.message} You can retry next time, or <a id="dl-photo" href="#">download the photo</a>.`;
+    bindDownloadLink();
   }
 }
 
